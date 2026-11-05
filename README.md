@@ -26,6 +26,19 @@ BF4 전용 서버의 아군 봇에게서 차량 좌석을 인계받는 비공식
 4. **StartServer_SeatTakeover.cmd**를 실행합니다. Windows 관리자 권한 창이 뜨면 승인합니다.
 5. 게임은 기존 실행기로 실행하고 서버에 접속합니다.
 
+### 기존 실행 순서에서 바뀌는 부분
+
+`StartServer_SeatTakeover.cmd`는 **2번의 기존 서버 BAT 실행을 대체**합니다. 적용 후에는 다음 순서로 실행하세요.
+
+1. `BF4BlazeServer.exe` 실행.
+2. **`StartServer_SeatTakeover.cmd` 실행** — 기존 서버 BAT를 내부에서 실행하고 좌석 인계 모듈과 클라이언트 감시 로더를 적용합니다.
+3. `BF4Launcher.exe`로 BF4 실행 후 서버 접속.
+4. 필요하면 `PRoCon.exe`를 실행해 서버 제어.
+
+서버 BAT를 따로 한 번 더 실행할 필요는 없습니다. 이 CMD는 Blaze 서버, 게임 런처 또는 PRoCon을 대신 실행하지 않습니다.
+
+현재 스크립트는 `Server` 폴더의 **`!StartServer.bat`**를 찾습니다. 실제 파일명이 `StartServer.bat`라면 `CodexSeatTakeover/Control-SeatTakeover.ps1`의 `$serverLauncher=Join-Path $serverRoot '!StartServer.bat'`에서 파일명을 실제 이름으로 바꾸세요. 기존 BAT의 내용은 그대로 유지합니다. 이미 서버가 실행 중이면 BAT를 다시 실행하지 않고 추가 모듈만 적용합니다.
+
 CMD는 파일을 덮어쓰는 설치기가 아닙니다. 서버가 꺼져 있으면 서버를 시작하고 모듈을 적용하며, 이미 켜져 있으면 재시작 없이 모듈을 적용합니다. 설치 파일을 교체할 때는 서버와 게임을 먼저 종료하세요. 서버가 실행 중인 동안 숨김 로더가 게임 재실행을 감시합니다. 기존 서버 BAT만 실행하면 이 추가 모듈은 자동 적용되지 않습니다.
 
 **StopSeatTakeover.cmd**는 감시 로더와 추가 기능을 끕니다. 안전하게 DLL을 해제할 수 없으면 기능을 비활성화하고 프로세스 종료까지 유지합니다. 서버/게임 프로세스를 강제로 종료하지 않습니다.
@@ -93,6 +106,19 @@ The add-on grants no extra takeover permission for seats occupied by human playe
    - `Server/CodexSeatTakeover/Client/BF4DeployAll.ini`
 4. Run **StartServer_SeatTakeover.cmd** and approve the Windows administrator prompt if shown.
 5. Start the game with your usual launcher and connect to the server.
+
+### How this changes your existing startup sequence
+
+`StartServer_SeatTakeover.cmd` **replaces step 2: running the original server BAT**. Use this sequence:
+
+1. Start `BF4BlazeServer.exe`.
+2. Run **`StartServer_SeatTakeover.cmd`**. It invokes the original server BAT internally, applies the seat takeover module, and starts the client watcher.
+3. Launch BF4 through `BF4Launcher.exe` and connect to the server.
+4. Optionally start `PRoCon.exe` to manage the server.
+
+Do not run the server BAT a second time. This CMD does not start or replace the Blaze server, game launcher, or PRoCon.
+
+The current script expects **`!StartServer.bat`** in the `Server` folder. If your file is named `StartServer.bat`, edit the filename in `$serverLauncher=Join-Path $serverRoot '!StartServer.bat'` inside `CodexSeatTakeover/Control-SeatTakeover.ps1` to match it. Keep the original BAT contents unchanged. If the server is already running, the CMD applies the add-on without running the BAT again.
 
 The CMD launcher starts the server if it is stopped, or applies the add-on without restarting an already running server. Close both the server and game before replacing installed files. While the server runs, a hidden loader watches for game restarts and applies the client companion. Running only the original server BAT does not automatically apply this add-on.
 
