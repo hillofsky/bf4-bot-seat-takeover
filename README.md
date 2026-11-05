@@ -1,5 +1,9 @@
 # BF4 Bot Seat Takeover 0.10
 
+[한국어](#한국어) · [English](#english)
+
+## 한국어
+
 BF4 전용 서버의 아군 봇에게서 차량 좌석을 인계받는 비공식 추가 모듈입니다. 서버 DLL과 게임 클라이언트 DLL을 함께 사용합니다. 기존 봇 모드가 설치된, 아래 실행 파일 지문과 일치하는 환경을 대상으로 합니다.
 
 ## 기능
@@ -65,3 +69,73 @@ test.cmd
 [검증 범위](docs/VALIDATION.md) · [변경 기록](CHANGELOG.md) · [구조](docs/ARCHITECTURE.md) · [외부 코드](THIRD-PARTY.md)
 
 이 프로젝트 자체에는 별도 오픈소스 라이선스를 지정하지 않았습니다. MinHook에는 동봉된 라이선스가 적용됩니다.
+
+## English
+
+An unofficial add-on for taking over vehicle seats occupied by allied bots on a BF4 dedicated server. It uses both a server DLL and a game client DLL. An existing bot mod and the exact supported executable builds are required.
+
+### Features
+
+- **E outside a vehicle:** take over the driver's seat from an allied bot.
+- **F1, F2, and subsequent seat keys while inside:** take over the corresponding seat from an allied bot.
+- **Vehicle icon → Deploy on the deployment screen:** spawn into the driver's seat of a vehicle driven by an allied bot.
+- Supports replacing bots in single-seat and fully occupied vehicles. When necessary to stay within a finite player capacity, the displaced bot exits the vehicle completely.
+- Uses a common path without vehicle-name restrictions, including J-20, Q-5, tanks, armored vehicles, mobile AA, boats, and helicopters. Not every vehicle type has been tested individually.
+
+The add-on grants no extra takeover permission for seats occupied by human players or enemies. Native team, destruction, spawn cooldown, and prohibited-seat checks remain in place. Soldiers are created through the original engine path using the selected class and loadout. The add-on does not create vehicles that have no deployment icon.
+
+### Installation and use
+
+1. Close the server and game, and back up any existing add-on files.
+2. Copy the `CodexSeatTakeover` folder and both CMD files from `release/` into the game's **Server folder**. Original game executables and `DINPUT8.dll` are neither included nor replaced.
+3. Replace `HumanName=YOUR_PLAYER_NAME` with your in-game nickname in **both** configuration files:
+   - `Server/CodexSeatTakeover/BF4SeatTakeover.ini`
+   - `Server/CodexSeatTakeover/Client/BF4DeployAll.ini`
+4. Run **StartServer_SeatTakeover.cmd** and approve the Windows administrator prompt if shown.
+5. Start the game with your usual launcher and connect to the server.
+
+The CMD launcher starts the server if it is stopped, or applies the add-on without restarting an already running server. Close both the server and game before replacing installed files. While the server runs, a hidden loader watches for game restarts and applies the client companion. Running only the original server BAT does not automatically apply this add-on.
+
+Run **StopSeatTakeover.cmd** to stop the watcher and disable the add-on. If a DLL cannot be safely unloaded immediately, it stays loaded but disabled until the process exits. The stop script does not forcibly terminate the server or game.
+
+### Supported builds
+
+Windows x64. Both executable hashes must match exactly; matching filenames alone are insufficient.
+
+| Executable | SHA-256 |
+|---|---|
+| bf4_Server_Final.exe | `160ec988aad0632946936a21a9aed1c73f5b906161f2d96b2a085ee65ce183ba` |
+| bf4_no_drm.exe | `0f3b4ca5e4b9642413b8df5d869d94337a8bb690238ae2b2e5a780a68942aeb4` |
+
+Supply the existing bot mod and game files separately. This repository does not distribute bot AI, game data, or game executables.
+
+### Building and testing
+
+Requires Visual Studio C++ x64 tools, the Windows SDK, MASM, and C++17 support. The build scripts locate Visual Studio through `vswhere`, or use the current x64 developer command prompt.
+
+```bat
+build.cmd
+test.cmd
+```
+
+- Server output: `native-adapter/build-addon/BF4SeatTakeover.dll`.
+- Client output: `native-client/build/BF4DeployClient.dll`. Rename it to **BF4DeployAll.dll** when installing.
+- Update the DLL hashes in the deployment manifests when installing newly built binaries.
+- Set `BF4_SERVER_EXE` to the actual server executable path to run the positive executable-fingerprint test. Without it, only that test is skipped; the other regression tests still run.
+
+Live validation includes AA/M142 outside entry, LAV/DV15 F1, F2 seat takeover, DV15 deployment without button flicker, and Q-5 cockpit spawning in the prototype. The permanent 0.10 build was also confirmed to support cockpit spawning with normal bot departures from base. This does not establish individual compatibility for every vehicle. See the [validation report](docs/VALIDATION.md) for the scope and limitations.
+
+### Repository layout
+
+| Directory | Contents |
+|---|---|
+| native-adapter | Server integration, bot identification, seat replacement, and deployment requests |
+| native-client | Deployment UI integration, full-vehicle exception, and concurrent UI state management |
+| core | Initial engine-independent model and regression tests |
+| release | 0.10 DLLs, configuration templates, and start/stop scripts |
+| docs | Validation results and design records |
+| vendor/minhook | MinHook 1.3.4 source and license |
+
+[Validation](docs/VALIDATION.md) · [Changelog](CHANGELOG.md) · [Architecture](docs/ARCHITECTURE.md) · [Third-party code](THIRD-PARTY.md)
+
+The linked project documents are currently in Korean, except for the third-party notice. No separate open-source license has been assigned to this project's own code. MinHook is covered by its included license.
