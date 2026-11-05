@@ -1,0 +1,11 @@
+**/build/
+**/build-addon/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.exe
+*.log
+*.zip
+.vs/

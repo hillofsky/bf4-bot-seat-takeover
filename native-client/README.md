@@ -1,0 +1,29 @@
+# Native deployment UI companion
+
+0.10에서 배치 화면의 선택 가능 상태와 만석 예외를 연결하는 클라이언트 추가 모듈입니다. 설치와 현재 검증 상태는 루트 README를 참고하세요.
+
+`build.cmd` builds `build/BF4DeployClient.dll` using MinHook 1.3.4 from the existing vendor tree. When installed as `BF4DeployAll.dll`, the required adjacent `BF4DeployAll.ini` has `[SeatTakeover] HumanName=...`, matching the server's configured human. Exports deliberately match the server injector's `SeatAddonInstall`, `SeatAddonUninstall`, and `SeatAddonCounter` conventions.
+
+Only client SHA-256 `0f3b4ca5e4b9642413b8df5d869d94337a8bb690238ae2b2e5a780a68942aeb4` and matching loaded PE headers/prefixes are accepted. The sole hook is native UI render RVA `406aa0` (three integer/pointer arguments, void return from recovered original). No protected bot control function is wrapped here.
+
+Shared protocol: `Local\CodexBF4DeployV1`, natural alignment 8, total 40 bytes. Offsets: 0 LONG sequence; 4 magic `37444642`; 8 version 1; 12 server PID; 16 enabled; 20 bot ID; 24 signed team; 28 reserved zero; 32 GetTickCount64 timestamp. Writer odd/even seqlock and client double-read protect the snapshot; age above 2000ms or a terminated server rejects it. The mapping is opened read-only.
+
+The UI override requires the configured local human and exact native ClientPlayer vtable/getter, matching local/bot team, and actual selected vehicle's driver ID equal to the fresh server proof. ClientPlayer ID **+14f8** is established by offline `856590: mov eax,[rcx+14f8]; ret` and parent live vtable+28 observation. It is not the ServerPlayer +1498 field. Client `16a540` returns local team, not ID.
+
+Only selected spawn point byte +13c is changed from 0 to 1 while the original UI render executes. UI callbacks run across multiple engine workers: the first observed thread ID is informational and does not authorize/reject callbacks. A mutex protects shared proof/mapping state and a bounded 32-slot point registry. The mutex is released before calling the original render. Overlapping renders acquire generation-tagged leases on the same point; readiness remains 1 until the last matching lease returns. Descriptor keys at point+28/+30 prevent restoring into a reused entity. An existing ready1 is accepted only if this registry already owns that exact point and generation keys. A failed restoration disables additional overrides and increments counter7. This does not create soldiers, send requests, or modify vehicle capacity: the server's existing request/loadout/spawn path remains authoritative. It cannot override slots occupied by a human or enemy merely from a display flag.
+
+Counter slots: 0 enabled; 1 learned UI thread; 2 UI calls; 3 fresh server proofs; 4 matched actual target; 5 temporary overrides; 6 caught observer exceptions; 7 restoration failures. Diagnostic slots: 8 retained for compatibility (zero after the worker fix); 9 first proof rejected; 10 selected point/ready-byte rejected; 11 local human rejected; 12 vehicle/entry/occupant missing or invalid; 13 bot identity/team rejected; 14 second proof or selection revalidation rejected. In the earlier diagnostic build, a large slot8 identified thread-latch skips. Current callbacks accept all engine UI workers; a large slot9 still identifies proof/lease rejection. Uninstall disables the hook, waits for in-flight calls and scans other threads' instruction pointers before removing hooks/closing mappings.
+
+Remove the prior Frida UI hook **before** native installation. The original byte-prefix guard rejects an already patched UI entry. Do not unload an old Frida hook after installing MinHook over the same target.
+
+If safe uninstall times out, the module remains loaded and disabled. Uninstall may be retried when the native hook is already disabled. Calling Install on that partially disabled module re-enables its existing MinHook allocation and reports success only after hook activation; it refuses this resume if restoration-failure counter7 is nonzero (error9). It never bypasses the quiescence check to unload a busy DLL.
+
+`build_tests.cmd` passed /O2 /W4 /WX freshness/protocol rejection tests. They are not a game integration test. The parent must confirm the selected point vtable is `image+1d1f4a0` for the tested DV15 and validate actual deployment after native installation.
+
+## Five-worker regression
+
+The old production first-thread policy was extracted without behavioral changes to `ui_thread_policy.hpp`, and `build_overlap_tests.cmd` first failed with `UI callback policy: 1/5 accepted` (exit1). After removing that authorization latch, the same seam accepts 5/5. `override_registry.hpp` is used by both production and the regression test. The test starts five actual overlapping C++ threads, verifies one native ready1 write with five active leases, then returns four renders while readiness remains 1, and observes ready0 only on the final release. It also tests reused entity keys, stale generation tickets, unowned ready1, bounded registry capacity, acquire write failure, and restoration failure. All passed /O2 /W4 /WX. These establish the identified callback/overlap behavior independently; the parent still must verify the installed game UI no longer flickers.
+
+## Full vehicle replacement (0.10)
+
+The second hook is an inline JMP at client RVA 4064f1, after the UI-manager CALL. Only the six straight-line bytes 45 33 C9 4C 8B 10 are relocated. The MASM adapter preserves native state and clears SIL only when a fresh server proof, local configured human, exact selected vehicle, and allied bot driver match. Original entry occupancy and MaxPlayers are untouched; subsequent native 40a250 checks still execute. Counters15/16/17 are FULL helper calls/allow/reject;18 is observer activity. Unload checks both 64-byte MinHook allocations in addition to module instruction pointers and active counts. See abi/README.md for the inline-site harness and unwind limitations.
