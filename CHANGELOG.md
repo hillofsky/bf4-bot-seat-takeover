@@ -1,5 +1,19 @@
 # 변경 기록
 
+## 0.11 — 2026-11-05
+
+- 서버를 처음 켰을 때부터 비행기에 탑승한 봇이 식별되지 않아 배치가 막히는 문제 수정.
+- 차종별 처리에서 조기 반환하기 전의 공통 제어 진입점에서 봇을 등록하도록 변경. 기존 하드웨어 상태 보존 연결부를 그대로 사용.
+- 식별 목록을 빈 상태로 초기화한 뒤 외부 등록 없이 32명 모두 자동 등록되고, 이전에 누락된 봇의 소유 관계가 검증되는 것을 확인.
+- 사용자가 비행기 조종석 스폰과 봇 정상 출격을 확인. 클라이언트 DLL은 검증된 0.10 파일을 유지.
+
+### English
+
+- Fix deployment being unavailable for bots that start in aircraft immediately after server startup.
+- Observe the first common control handler before vehicle-specific handlers can return early, using the existing transparent state-preserving adapter.
+- Verified automatic registration of all 32 bots from an empty registry without externally importing identities, including previously missed bots.
+- The user confirmed aircraft cockpit spawning and normal bot sorties. The client DLL remains the verified 0.10 binary.
+
 ## 0.10 — 2026-11-05
 
 - 비행 제어 경로가 바뀐 봇도 살아 있는 소유 관계와 명단을 재검증해 식별하도록 수정.

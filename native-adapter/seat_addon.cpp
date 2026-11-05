@@ -448,7 +448,11 @@ extern "C" __declspec(dllexport) DWORD WINAPI SeatAddonInstall(void*) {
     constexpr unsigned char spawn_prefix[]={0x48,0x8b,0xc4,0x57,0x48,0x81,0xec,0x90,0,0,0,0x48,0xc7,0x40,0x88,0xfe};
     constexpr unsigned char find_prefix[]={0x41,0x83,0xc8,0xff,0xe9,0x07,0,0,0};
     constexpr unsigned char cycle_prefix[]={0x48,0x89,0x5c,0x24,0x20,0x57,0x48,0x83,0xec,0x20,0x48,0x8b,0xb9,0xc8,0x14,0x00};
-    if (!prefix(bot_base+0x54730,bot_prefix,sizeof(bot_prefix)) ||
+    // Native dispatch calls ee500 before b4520, boat 60b20, and ground 54730.
+    // Aircraft may return early, so observing only boat/ground misses pilots
+    // after a fresh server start. The same transparent thunk observes this
+    // first handler before native mode selection, preserving its full ABI.
+    if (!prefix(bot_base+0xee500,bot_prefix,sizeof(bot_prefix)) ||
         !prefix(bot_base+0x60b20,boat_prefix,sizeof(boat_prefix))) return 2;
     const auto base=image.module_base();
     if (!prefix(base+0xbcfc20,base_prefix,sizeof(base_prefix)) ||
@@ -464,7 +468,7 @@ extern "C" __declspec(dllexport) DWORD WINAPI SeatAddonInstall(void*) {
     if (MH_Initialize()!=MH_OK) {close_deployment_proof();return 4;}
     reader=std::make_unique<R63SeatReader>(image);
     policy=std::make_unique<DriverPolicy>(image,known_bot,gameplay);
-    targets={reinterpret_cast<void*>(bot_base+0x54730),reinterpret_cast<void*>(base+0xbcfc20),reinterpret_cast<void*>(base+0xc3e9e0),reinterpret_cast<void*>(base+0xbfef40),reinterpret_cast<void*>(base+0xbcaf50),reinterpret_cast<void*>(base+0xbc9060),reinterpret_cast<void*>(bot_base+0x60b20),reinterpret_cast<void*>(base+0x25f460),reinterpret_cast<void*>(base+0xbcb720),reinterpret_cast<void*>(base+0x237f80)};
+    targets={reinterpret_cast<void*>(bot_base+0xee500),reinterpret_cast<void*>(base+0xbcfc20),reinterpret_cast<void*>(base+0xc3e9e0),reinterpret_cast<void*>(base+0xbfef40),reinterpret_cast<void*>(base+0xbcaf50),reinterpret_cast<void*>(base+0xbc9060),reinterpret_cast<void*>(bot_base+0x60b20),reinterpret_cast<void*>(base+0x25f460),reinterpret_cast<void*>(base+0xbcb720),reinterpret_cast<void*>(base+0x237f80)};
     if (MH_CreateHook(targets[0],reinterpret_cast<void*>(&SeatAddonGroundObserver),&SeatAddonOriginalGround)!=MH_OK ||
         MH_CreateHook(targets[1],reinterpret_cast<void*>(&permission_hook),reinterpret_cast<void**>(&original_permission))!=MH_OK ||
         MH_CreateHook(targets[2],reinterpret_cast<void*>(&select_hook),reinterpret_cast<void**>(&original_select))!=MH_OK ||

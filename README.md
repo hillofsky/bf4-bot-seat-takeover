@@ -1,4 +1,4 @@
-# BF4 Bot Seat Takeover 0.10
+# BF4 Bot Seat Takeover 0.11
 
 [한국어](#한국어) · [English](#english)
 
@@ -75,7 +75,7 @@ test.cmd
 | native-adapter | 실제 서버 연결부, 봇 식별, 좌석 교체, 배치 요청 처리 |
 | native-client | 배치 화면 연결부, 만석 예외, 다중 작업 스레드 상태 관리 |
 | core | 엔진과 독립적인 초기 모델과 회귀 검사 |
-| release | 0.10 DLL, 설정 템플릿, 실행 및 중지 스크립트 |
+| release | 0.11 DLL, 설정 템플릿, 실행 및 중지 스크립트 |
 | docs | 검증 결과와 설계 기록 |
 | vendor/minhook | MinHook 1.3.4 소스와 라이선스 |
 
@@ -158,7 +158,7 @@ Live validation includes AA/M142 outside entry, LAV/DV15 F1, F2 seat takeover, D
 | native-adapter | Server integration, bot identification, seat replacement, and deployment requests |
 | native-client | Deployment UI integration, full-vehicle exception, and concurrent UI state management |
 | core | Initial engine-independent model and regression tests |
-| release | 0.10 DLLs, configuration templates, and start/stop scripts |
+| release | 0.11 DLLs, configuration templates, and start/stop scripts |
 | docs | Validation results and design records |
 | vendor/minhook | MinHook 1.3.4 source and license |
 
