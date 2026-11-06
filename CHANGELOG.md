@@ -1,5 +1,17 @@
 # 변경 기록
 
+## 0.12 — 2026-11-06
+
+- 좌석 인계 서버 DLL에 LAV/ZBD 봇 운전석 사격 수정을 통합. 차량 AI가 사격 판정에 사용하는 탑승 슬롯을 다시 확인해 주무기와 보조무기를 사용할 수 있도록 수정.
+- 서버 시작 시 좌석 인계와 함께 적용. 기존 배치용 클라이언트 DLL을 그대로 사용.
+- 사용자가 주무기·보조무기 사격과 통합본 적용 후 서버 렉이 사라진 것을 확인.
+
+### English
+
+- Integrate the LAV/ZBD bot driver weapon fix into the seat takeover server DLL. Correct the seat lookup used by vehicle AI so bot drivers can fire both primary and secondary weapons.
+- Enable the fix alongside seat takeover at server startup. Reuse the existing deployment client DLL.
+- The user confirmed primary and secondary weapon fire and reported no server lag with the combined build.
+
 ## 0.11 — 2026-11-05
 
 - 서버를 처음 켰을 때부터 비행기에 탑승한 봇이 식별되지 않아 배치가 막히는 문제 수정.

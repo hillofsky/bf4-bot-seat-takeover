@@ -53,7 +53,7 @@ std::atomic<unsigned> in_flight{0},game_thread{0};
 std::array<std::atomic<unsigned long long>,16> counters{};
 struct BotRecord { Handle player=0,context=0; unsigned id=0; ULONGLONG seen=0; BotIdentitySnapshot identity; };
 std::array<BotRecord,256> bots{};
-std::array<void*,10> targets{};
+std::array<void*,11> targets{};
 HMODULE self_module=nullptr;
 std::array<char,64> human_name{};
 struct Transfer { Handle human=0,bot=0,vehicle=0; bool exclusive=false; };
@@ -418,6 +418,14 @@ extern "C" void SeatAddonObserveBoat(std::uintptr_t context) noexcept {
     SetLastError(error);
 }
 
+extern "C" {
+void SeatAddonArmorRead();
+void* SeatAddonArmorReturn=nullptr;
+void* SeatAddonOriginalRead=nullptr;
+volatile LONG SeatAddonArmorEnabled=0;
+volatile LONG64 SeatAddonArmorCorrections=0;
+}
+
 // Explicit entry point: never install hooks while holding the loader lock.
 // 0 success; 1 wrong image; 2 bot module not ready/mismatched; 3 native prefix
 // mismatch; 4 hook initialization; 5 hook creation; 6 hook activation.
@@ -464,11 +472,16 @@ extern "C" __declspec(dllexport) DWORD WINAPI SeatAddonInstall(void*) {
         !prefix(base+0xbcb720,find_prefix,sizeof(find_prefix)) ||
         !prefix(base+0x237f80,network_prefix,sizeof(network_prefix)) ||
         !prefix(base+0xc41700,getter_prefix,sizeof(getter_prefix))) return 3;
+    constexpr unsigned char armor_read_prefix[]={0x48,0x83,0xec,0x28,0x48,0x8b,0xc2};
+    constexpr unsigned char armor_recheck[]={0xe8,0x47,0xe9,0x02,0x00,0x84,0xc0};
+    if (!prefix(bot_base+0x88210,armor_read_prefix,sizeof(armor_read_prefix)) ||
+        !prefix(bot_base+0x598c4,armor_recheck,sizeof(armor_recheck))) return 2;
+    SeatAddonArmorReturn=reinterpret_cast<void*>(bot_base+0x598c9);
     if (!open_deployment_proof()) return 8;
     if (MH_Initialize()!=MH_OK) {close_deployment_proof();return 4;}
     reader=std::make_unique<R63SeatReader>(image);
     policy=std::make_unique<DriverPolicy>(image,known_bot,gameplay);
-    targets={reinterpret_cast<void*>(bot_base+0xee500),reinterpret_cast<void*>(base+0xbcfc20),reinterpret_cast<void*>(base+0xc3e9e0),reinterpret_cast<void*>(base+0xbfef40),reinterpret_cast<void*>(base+0xbcaf50),reinterpret_cast<void*>(base+0xbc9060),reinterpret_cast<void*>(bot_base+0x60b20),reinterpret_cast<void*>(base+0x25f460),reinterpret_cast<void*>(base+0xbcb720),reinterpret_cast<void*>(base+0x237f80)};
+    targets={reinterpret_cast<void*>(bot_base+0xee500),reinterpret_cast<void*>(base+0xbcfc20),reinterpret_cast<void*>(base+0xc3e9e0),reinterpret_cast<void*>(base+0xbfef40),reinterpret_cast<void*>(base+0xbcaf50),reinterpret_cast<void*>(base+0xbc9060),reinterpret_cast<void*>(bot_base+0x60b20),reinterpret_cast<void*>(base+0x25f460),reinterpret_cast<void*>(base+0xbcb720),reinterpret_cast<void*>(base+0x237f80),reinterpret_cast<void*>(bot_base+0x88210)};
     if (MH_CreateHook(targets[0],reinterpret_cast<void*>(&SeatAddonGroundObserver),&SeatAddonOriginalGround)!=MH_OK ||
         MH_CreateHook(targets[1],reinterpret_cast<void*>(&permission_hook),reinterpret_cast<void**>(&original_permission))!=MH_OK ||
         MH_CreateHook(targets[2],reinterpret_cast<void*>(&select_hook),reinterpret_cast<void**>(&original_select))!=MH_OK ||
@@ -478,7 +491,8 @@ extern "C" __declspec(dllexport) DWORD WINAPI SeatAddonInstall(void*) {
         MH_CreateHook(targets[6],reinterpret_cast<void*>(&SeatAddonBoatObserver),&SeatAddonOriginalBoat)!=MH_OK ||
         MH_CreateHook(targets[7],reinterpret_cast<void*>(&spawn_vehicle_hook),reinterpret_cast<void**>(&original_spawn_vehicle))!=MH_OK ||
         MH_CreateHook(targets[8],reinterpret_cast<void*>(&find_seat_hook),reinterpret_cast<void**>(&original_find_seat))!=MH_OK ||
-        MH_CreateHook(targets[9],reinterpret_cast<void*>(&network_selection_hook),reinterpret_cast<void**>(&original_network))!=MH_OK) {
+        MH_CreateHook(targets[9],reinterpret_cast<void*>(&network_selection_hook),reinterpret_cast<void**>(&original_network))!=MH_OK ||
+        MH_CreateHook(targets[10],reinterpret_cast<void*>(&SeatAddonArmorRead),&SeatAddonOriginalRead)!=MH_OK) {
         remove_hooks(); return 5;
     }
     for (auto target:targets) {
@@ -486,10 +500,12 @@ extern "C" __declspec(dllexport) DWORD WINAPI SeatAddonInstall(void*) {
     }
     enabled.store(true);
     if (MH_ApplyQueued()!=MH_OK) { enabled.store(false); remove_hooks(); return 6; }
+    InterlockedExchange(&SeatAddonArmorEnabled,1);
     installed=true;
     return 0;
 }
 extern "C" __declspec(dllexport) unsigned long long SeatAddonCounter(unsigned slot) {
+    if (slot==128) return static_cast<unsigned long long>(InterlockedCompareExchange64(&SeatAddonArmorCorrections,0,0));
     if (slot==0) return enabled.load()?1:0;
     if (slot==1) return game_thread.load();
     return slot<counters.size()?counters[slot].load():0;
@@ -497,6 +513,7 @@ extern "C" __declspec(dllexport) unsigned long long SeatAddonCounter(unsigned sl
 extern "C" __declspec(dllexport) DWORD WINAPI SeatAddonUninstall(void*) {
     std::lock_guard<std::mutex> lock(lifecycle);
     if (!installed) return 0;
+    InterlockedExchange(&SeatAddonArmorEnabled,0);
     enabled.store(false);
     publish_deployment_proof(false,0,0);
     for (auto target:targets) if (MH_QueueDisableHook(target)!=MH_OK) return 2;

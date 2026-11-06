@@ -1,8 +1,8 @@
 {
-  "Version": "0.11",
-  "DllSHA256": "A2CEBA0B65A379282DCD7FE42382B16BAC215A815D324FE60C0A96FF116CAE33",
+  "Version": "0.12",
+  "DllSHA256": "46AA69B3087DFBA0AAD8AA88F71C66E92F69B9E7A2C029CC524B378FAE4D8DC5",
   "ServerSHA256": "160EC988AAD0632946936A21A9AED1C73F5B906161F2D96B2A085EE65CE183BA",
   "HumanName": "YOUR_PLAYER_NAME",
-  "Scope": "Outside E and inside F1-Fn allied bot seat takeover; deployment-map vehicle icon takeover with native loadout spawning",
+  "Scope": "Outside E and inside F1-Fn allied bot seat takeover; deployment-map vehicle icon takeover with native loadout spawning; native LAV/ZBD bot weapon fix",
   "VehicleScope": "All native vehicle types; deployment takeover requires an existing vehicle icon and a positively verified allied bot driver"
 }
